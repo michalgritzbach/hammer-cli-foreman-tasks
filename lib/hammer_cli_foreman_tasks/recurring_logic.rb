@@ -2,26 +2,33 @@ module HammerCLIForemanTasks
   class RecurringLogic < HammerCLIForeman::Command
     resource :recurring_logics
 
-    class ListCommand < HammerCLIForeman::ListCommand
-      output do
+    # The list and the info command show the same set of fields. They share this
+    # base definition and both let the RecurringLogic extension format it the same
+    # way, so their output stays consistent. It is a method rather than a constant
+    # on purpose - autoload_subcommands scans the constants of this class.
+    def self.output_fields
+      proc do
         field :id, _('ID')
         field :cron_line, _('Cron line')
         field :task_count, _('Task count')
-        field :action, _('Action')
-        field :last_occurence, _('Last occurrence'), Fields::Date
-        field :next_occurence, _('Next occurrence'), Fields::Date
         field :iteration, _('Iteration')
-        field :max_iteration, _('Iteration limit')
         field :end_time, _('End time')
         field :state, _('State')
-        field :purpose, _('Purpose')
+        field :purpose, _('Purpose'), nil, hide_blank: true
       end
+    end
+
+    class ListCommand < HammerCLIForeman::ListCommand
+      output(&RecurringLogic.output_fields)
 
       build_options
+
+      extend_with(HammerCLIForemanTasks::CommandExtensions::RecurringLogic.new)
     end
 
     class InfoCommand < HammerCLIForeman::InfoCommand
-      output ListCommand.output_definition
+      output(&RecurringLogic.output_fields)
+
       build_options
 
       extend_with(HammerCLIForemanTasks::CommandExtensions::RecurringLogic.new)
@@ -53,7 +60,7 @@ module HammerCLIForemanTasks
       command_name 'delete'
       desc _("Delete all recuring logics filtered by the arguments")
       failure_message _('Could not delete recurring logics')
-      output ListCommand.output_definition
+      output(&RecurringLogic.output_fields)
 
       def execute
         response = send_request
